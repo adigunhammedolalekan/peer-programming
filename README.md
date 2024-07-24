@@ -47,8 +47,8 @@ Create a Transaction/send money from one user to another
 ```json
 POST /transactions
 {
-  "userId": 1,
-  "receiverId": 2,
+  "userId": 2,
+  "receiverId": 1,
   "amount": 10
 }
 
@@ -57,7 +57,7 @@ POST /transactions
   "error": false,
   "data": {
     "ID": 4,
-    "Amount": 3,
+    "Amount": 10,
     "UserId": 2,
     "ReceiverId": 1,
     "Status": "CREATED"
