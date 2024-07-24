@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"sync"
 )
 
 type Processor interface {
@@ -20,6 +21,7 @@ type processor struct {
 	userStore UserStore
 	txStore   TransactionStore
 
+	wg         sync.WaitGroup
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 }
@@ -34,14 +36,16 @@ func (p *processor) SubmitTransaction(transaction *Transaction) {
 
 func (p *processor) Start() {
 	for i := 0; i < p.workerCount; i++ {
+		p.wg.Add(1)
 		go p.worker(i)
 	}
 }
 
 func (p *processor) worker(id int) {
+	defer p.wg.Done()
+
 	log.Printf("Worker %d is running", id)
 	for {
-		log.Println("Next cycle")
 		select {
 		case <-p.ctx.Done():
 			log.Println("DONE is called")
@@ -55,11 +59,6 @@ func (p *processor) worker(id int) {
 }
 
 func (p *processor) processUser(u *User) {
-	if u == nil {
-		log.Println("Received nil User data")
-		return
-	}
-
 	log.Printf("Processing user: %d", u.ID)
 	u.Verified = true
 	p.userStore.Update(u)
@@ -67,11 +66,6 @@ func (p *processor) processUser(u *User) {
 }
 
 func (p *processor) processTransaction(tx *Transaction) {
-	if tx == nil {
-		log.Println("Received nil Transaction data")
-		return
-	}
-
 	log.Printf("Processing transaction: %d", tx.ID)
 	user, err := p.userStore.GetUser(tx.UserId)
 	if err != nil {
@@ -101,6 +95,7 @@ func (p *processor) processTransaction(tx *Transaction) {
 func (p *processor) Stop() {
 	log.Println("Stopping task processor...")
 	p.cancelFunc()
+	p.wg.Wait()
 	close(p.txChan)
 	close(p.userChan)
 }
